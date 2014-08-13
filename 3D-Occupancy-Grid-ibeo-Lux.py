@@ -238,17 +238,59 @@ layer = data['<Ebene>'][(data['# <Zeitstempel>']==timestamp) & (data['<Winkel>']
 
 # Sensor Position
 
+# <markdowncell>
+
+# Rotation und Translation in homogenen Koordinaten, d.h. es kann alles über Matrizenmultiplikation gemacht werden.
+# 
+# $$\left[\begin{matrix}x \\ y \\ z \\ 1\end{matrix}\right]_\text{Endpoint} = \left[\begin{matrix} R_{3x3} & t_{1x3} \\ 0 & 1\end{matrix}\right] \cdot \left[\begin{matrix}x \\ y \\ z \\ 1\end{matrix}\right]_\text{Messpunkte}$$
+
 # <codecell>
 
-tsensor = np.array([[0], [5.0], [1.0]])
-[xe,ye,ze] = [xe,ye,ze] + tsensor
+def Rypr(y, p, r):
+    '''
+    Rotationsmatrix für y=yaw, p=pitch, r=roll in degrees
+    '''
+    # from Degree to Radians
+    y = y*np.pi/180.0
+    p = p*np.pi/180.0
+    r = r*np.pi/180.0
+    
+    Rr = np.matrix([[1.0, 0.0, 0.0],[0.0, np.cos(r), -np.sin(r)],[0.0, np.sin(r), np.cos(r)]])
+    Rp = np.matrix([[np.cos(p), 0.0, np.sin(p)],[0.0, 1.0, 0.0],[-np.sin(p), 0.0, np.cos(p)]])
+    Ry = np.matrix([[np.cos(y), -np.sin(y), 0.0],[np.sin(y), np.cos(y), 0.0],[0.0, 0.0, 1.0]])
+    
+    return Ry*Rp*Rr
+
+# <codecell>
+
+yaw   = 0.0 #  Gieren
+pitch = 0.0 #  Nicken
+roll  = 0.0 #  Wanken
+dx= 0.0 #  Verschiebung in X
+dy= 5.0 #  Verschiebung in Y
+dz= 1.0 #  Verschiebung in Z
+
+# <codecell>
+
+RSensor = np.eye(4) # Einheitsmatrix erstellen
+RSensor[np.ix_([0,1,2],[0,1,2])] = Rypr(yaw, pitch, roll) # Rotationsteil
+tsensor = np.array([[dx], [dy], [dz]]) # Translationsteil
+RSensor[np.ix_([0,1,2],[3])] = tsensor
+
+# <codecell>
+
+RSensor
+
+# <codecell>
+
+[xe,ye,ze,w] = np.dot(RSensor, np.array((xe,ye,ze,np.ones(len(xe)))))
 
 # <codecell>
 
 plt3d = plt.figure(figsize=(12, 6)).gca(projection='3d')
 plt3d.scatter(xe, ye, ze, c='r', label='Laserscanner Pointcloud')
 plt3d.scatter(tsensor[0], tsensor[1], tsensor[2], c='k', s=200, label='ibeo Lux')
-plt3d.view_init(25, -125)
+plt3d.view_init(45, -115)
 plt3d.axis('equal')
 
 # <headingcell level=2>
@@ -270,7 +312,7 @@ lmax = 3.5
 
 # <codecell>
 
-def insertPointcloud(t, R, xe,ye,ze):
+def insertPointcloud(tSensor, xe,ye,ze):
     
     for i,val in enumerate(xe):
         
@@ -286,7 +328,7 @@ def insertPointcloud(t, R, xe,ye,ze):
 
         
         # Grid cells in perceptual range of laserscanner
-        for (x,y,z) in bresenham3D(t, (xe[i], ye[i], ze[i])):
+        for (x,y,z) in bresenham3D(tSensor, (xe[i], ye[i], ze[i])):
 
             grid[x,y,z] += lfree # decrease LogOdds Ratio
 
@@ -307,7 +349,10 @@ tSensor = tsensor/r  # Translation (shift from 0,0,0) in Grid Cell Numbers
 
 # integrate the measurement 5 times
 for m in range(5):
-    insertPointcloud(tSensor, RSensor, xe/r,ye/r,ze/r)
+    try:
+        insertPointcloud(tSensor, xe/r,ye/r,ze/r)
+    except:
+        print('Fehler beim Einfügen der Messung. Grid zu klein gewählt?!')
 
 # <headingcell level=3>
 
