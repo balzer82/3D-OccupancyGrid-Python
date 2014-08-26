@@ -273,8 +273,12 @@ dz= 1.0 #  Verschiebung in Z
 # <codecell>
 
 RSensor = np.eye(4) # Einheitsmatrix erstellen
-RSensor[np.ix_([0,1,2],[0,1,2])] = Rypr(yaw, pitch, roll) # Rotationsteil
-tsensor = np.array([[dx], [dy], [dz]]) # Translationsteil
+
+# Rotationsteil
+RSensor[np.ix_([0,1,2],[0,1,2])] = Rypr(yaw, pitch, roll)
+
+# Translationsteil
+tsensor = np.array([[dx], [dy], [dz]]) 
 RSensor[np.ix_([0,1,2],[3])] = tsensor
 
 # <codecell>
@@ -420,4 +424,26 @@ print('Min Grid Value (Probability): %.2f' % np.min(gridP))
 # <codecell>
 
 print('Done.')
+
+# <headingcell level=2>
+
+# Convolve the Map for Path Planning
+
+# <codecell>
+
+from scipy.ndimage import gaussian_filter
+
+# <codecell>
+
+blurmap = gaussian_filter(gridP, 1)
+
+# <codecell>
+
+plot3Dgrid(blurmap, 65, -20)
+
+# <codecell>
+
+
+# <codecell>
+
 
