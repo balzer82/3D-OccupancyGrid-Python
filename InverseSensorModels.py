@@ -125,28 +125,40 @@ Pzx = Pzx_hit + Pzx_unexp + Pzx_rand + Pzx_maxrange
 plt.figure(figsize=(12,6))
 ax1 = plt.subplot2grid((4,4), (0,0), rowspan = 2)
 plt.plot(zs, Pzx_hit)
+plt.axvline(zexp, c='k', alpha=0.5)
 plt.title('Measurement Noise')
 plt.ylabel(r'$P(z \mid x,m)$')
 
-ax2 = plt.subplot2grid((4,4), (0,1), rowspan = 2)
+ax2 = plt.subplot2grid((4,4), (0,1), rowspan = 2, sharey=ax1)
 plt.plot(zs, Pzx_unexp)
+plt.axvline(zexp, c='k', alpha=0.5)
 plt.title('Unexcpected Obstacles')
 
-ax3 = plt.subplot2grid((4,4), (0,2), rowspan = 2)
+ax3 = plt.subplot2grid((4,4), (0,2), rowspan = 2, sharey=ax1)
 plt.plot(zs, Pzx_rand)
+plt.axvline(zexp, c='k', alpha=0.5)
 plt.title('Random Measurement')
 
-ax4 = plt.subplot2grid((4,4), (0,3), rowspan = 2)
+ax4 = plt.subplot2grid((4,4), (0,3), rowspan = 2, sharey=ax1)
 plt.plot(zs, Pzx_maxrange)
+plt.axvline(zexp, c='k', alpha=0.5)
 plt.title('Max Range Measurement')
 
 ax5 = plt.subplot2grid((4,4), (2,0), colspan=4, rowspan = 3)
 plt.plot(zs, Pzx)
-plt.title('Mixture Density')
+plt.axvline(zexp, c='k', alpha=0.5)
+plt.title('= Mixture Density')
 plt.ylabel(r'$P(z|x,m)$')
-plt.xlabel('z')
+plt.xlabel('z [$m$]')
+
+for ax in [ax2, ax3, ax4]:
+    plt.setp(ax.get_yticklabels(), visible=False)
+    # The y-ticks will overlap with "hspace=0", so we'll hide the bottom tick
+    #ax.set_yticks(ax.get_yticks()[1:])
+    ax.text(-1.5,np.max(Pzx_hit)/2,'+', fontsize=20)
 
 plt.tight_layout()
+plt.savefig('InverseSensorModel-MixtureDensity.png', dpi=150)
 
 # <headingcell level=2>
 
@@ -189,11 +201,31 @@ def ibeo2XYZ(theta, dist, layer):
 
 # <codecell>
 
-data = pd.read_csv('ibeoLuxMeasurement.txt', delimiter='|')
+data = pd.read_csv('kalibrierungtisch2.txt', delimiter='|')
 
 # <codecell>
 
 data.head(5)
+
+# <headingcell level=4>
+
+# Let's see how they are collected, line by line
+
+# <codecell>
+
+@interact
+def integratemeasurement(t = widgets.IntSliderWidget(min=1, max=5000, step=1, value=40, description="")):
+    #print t
+    f = (data['<Ebene>']==3) & (data['<Winkel>']>-0.015) & (data['<Winkel>']<0.015)
+    angle = data['<Winkel>'][f].iloc[:t]
+    distance = data['<Radius>'][f].iloc[:t] /100.0
+    layer = data['<Ebene>'][f].iloc[:t]
+
+    plt.scatter(distance,angle, s=50, alpha=0.1)
+    
+    plt.axis('equal')
+    plt.xlabel('z [$m$]')
+    plt.ylabel('$\phi$ [$rad$]')
 
 # <codecell>
 
@@ -201,21 +233,43 @@ timestamps = data['# <Zeitstempel>'].unique()
 
 # <codecell>
 
-z=[]
-for timestamp in timestamps:
-    angle = data['<Winkel>'][(data['# <Zeitstempel>']==timestamp) & (data['<Winkel>']==0.0) & (data['<Ebene>']==0)]
-    distance = data['<Radius>'][(data['# <Zeitstempel>']==timestamp) & (data['<Winkel>']==0.0) & (data['<Ebene>']==0)]/100.0
+x=[]
+y=[]
+for i, timestamp in enumerate(timestamps):
     
-    [xe, ye, ze] = ibeo2XYZ(angle.values, distance.values, 0)
+    #f = (data['# <Zeitstempel>']==timestamp) & (data['<Ebene>']==3)
+    #f = (data['# <Zeitstempel>']==timestamp) & ((data.index%467.0)==0)
+    f = (data['# <Zeitstempel>']==timestamp) & (data['<Ebene>']==3) & (data['<Winkel>']>-0.015) & (data['<Winkel>']<0.01)
     
-    z.extend(xe)
+    angle = data['<Winkel>'][f]
+    distance = data['<Radius>'][f] /100.0
+    layer = data['<Ebene>'][f]
+    
+    # 350. Punkt jedes Zeitstempels nehmen
+    [xe, ye, ze] = ibeo2XYZ(angle, distance, layer)
+    
+    x.extend(xe)
+    y.extend(ye)
 
 # <codecell>
 
-plt.hist(z, 20);
+plt.scatter(x,y)
+plt.axis('equal')
+
+# <codecell>
+
+
+# <codecell>
+
+plt.figure(figsize=(6,3))
+plt.hist(x, bins=5, align='mid');
+#plt.axvline(np.mean(x), alpha=0.6, c='k')
 plt.xlim(0, 5)
-plt.title('Histogram of real ibeo Lux Sensor measurement')
-plt.xlabel('z')
+#plt.title('Histogram of real ibeo Lux Sensor measurement')
+plt.xlabel('z [$m$]')
+
+plt.tight_layout()
+plt.savefig('Histogram-ibeoLux-InverseSensorModel.png', dpi=150)
 
 # <markdowncell>
 
@@ -287,7 +341,7 @@ def plotmultivargauss(sigmaz = widgets.FloatSliderWidget(min=0.01, max=5.0, step
 sigmaz = 0.3  # Entfernung
 sigmat = 0.2  # Winkel
 
-dxy = 4.0  # Sensor Reading Entfernung
+dxy = 8.0  # Sensor Reading Entfernung
 txy = 0.0  # Sensor Reading Winkel
 
 x, y, P = calcmultivargauss(sigmaz, sigmat, dxy, txy)
@@ -298,19 +352,20 @@ x, y, P = calcmultivargauss(sigmaz, sigmat, dxy, txy)
 
 # <codecell>
 
-fig = plt.figure(figsize=(6,6))
-ax = fig.gca(projection='3d')
+fig = plt.figure(figsize=(12,6))
+ax = fig.gca(projection='3d', axisbg='w')
 
 ax.scatter(0,0, s=100, c='k')
-ax.plot_wireframe(x, y, P, rstride=100, cstride=10)
+ax.plot_wireframe(x, y, P, rstride=50, cstride=5)
 
-ax.set_xlabel('x')
+ax.set_xlabel(r'x [$m$]')
 #ax.set_xlim(0, 8)
-ax.set_ylabel('y')
+ax.set_ylabel('y [$m$]')
 #ax.set_ylim(-4, 4)
 ax.set_zlabel('P')
 #ax.set_zlim(-100, 100)
-ax.view_init(elev=45., azim=-65.)
+ax.view_init(elev=45., azim=180.)
+plt.savefig('InverseSensorModel-3D.png', dpi=150)
 
 # <headingcell level=2>
 
@@ -333,13 +388,17 @@ ax.view_init(elev=45., azim=-65.)
 
 # <codecell>
 
-zs = np.arange(0, 10.1, 0.01)   # Entfernungen
-ts = np.arange(-1, 1.1, 0.01)    # Winkel
+zs = np.arange(0, 10.01, 0.01)   # Entfernungen
+ts = np.arange(-1, 1.01, 0.01)    # Winkel
 
 # <codecell>
 
-d = 0.01+0.015*zs
-a = 0.6*(1-np.min((np.ones(len(zs)), 1/5.0*zs), axis=0))
+D = 5.0 # Sensor Measurement
+
+# <codecell>
+
+d = 0.01+0.15*zs
+a = 0.1*(1-np.min((np.ones(len(zs)), 1/10.0*zs), axis=0))
 
 # <codecell>
 
@@ -361,19 +420,19 @@ plt.tight_layout()
 # <codecell>
 
 # The effect of F is to make the no change for cells everywhere but in the vicinity of the range reading r = D
-F = 0.001
-
-# <codecell>
-
-D = 5.0 # Sensor Measurement
+F = 0.0001
 
 # <codecell>
 
 # probability Density
 p = a*np.exp(-(zs-D)**2/(2.0*d**2)) + F
 
+p = p/np.max(p)
+
 plt.plot(zs, p)
 plt.axvline(D, c='k')
+plt.ylabel(r'$P(z|x,m)$')
+plt.xlabel('z [$m$]')
 
 # <codecell>
 
@@ -392,17 +451,52 @@ P[zs>D] = 0.0
 
 plt.plot(zs, P)
 plt.axvline(D, c='k', alpha=0.2)
+plt.ylabel(r'$P(\neg z|x,m)$')
+plt.xlabel('z [$m$]')
 
 # <codecell>
 
 # sensor probability density
 spd = P*p
+
+spd = spd/np.max(spd)
+
 plt.plot(zs, spd)
-plt.axvline(D, c='k', alpha=0.2)
+plt.axvline(D, c='k', alpha=0.5)
 #plt.ylim(0, 0.01)
+plt.ylabel(r'$P(z|x,m)$')
+plt.xlabel('z [$m$]')
 
 # <codecell>
 
+plt.figure(figsize=(8,5))
+ax1 = plt.subplot2grid((4,4), (0,0), rowspan = 2, colspan = 2)
+plt.plot(zs, p)
+plt.axvline(zexp, c='k', alpha=0.5)
+plt.title('Measurement Noise')
+plt.ylabel(r'$P(z \mid x,m)$')
+
+ax2 = plt.subplot2grid((4,4), (0,2), rowspan = 2, colspan = 2, sharey=ax1)
+plt.plot(zs, P)
+plt.ylabel(r'$P(\neg z|x,m)$')
+plt.axvline(zexp, c='k', alpha=0.5)
+plt.title('No Range Reading')
+
+ax3 = plt.subplot2grid((4,4), (2,0), colspan=4, rowspan = 3)
+plt.plot(zs, spd)
+plt.axvline(zexp, c='k', alpha=0.5)
+plt.title('= KONOLIGE Inverse Sensor Model')
+plt.ylabel(r'$P(z|x,m)$')
+plt.xlabel('z [$m$]')
+
+for ax in [ax2]:
+    plt.setp(ax.get_yticklabels(), visible=False)
+    # The y-ticks will overlap with "hspace=0", so we'll hide the bottom tick
+    #ax.set_yticks(ax.get_yticks()[1:])
+    ax.text(-1.5,np.max(P)/2,'+', fontsize=20)
+
+plt.tight_layout()
+plt.savefig('InverseSensorModel-KONOLIGE.png', dpi=150)
 
 # <headingcell level=2>
 
@@ -452,6 +546,8 @@ def plotmultivargauss(wd = widgets.FloatSliderWidget(min=0.005, max=1.0, step=0.
     [plt.scatter(v[0], v[1], s=10) for k,v in p.iteritems()]
     plt.plot((0, d*np.cos(phi)), (0, d*np.sin(phi)), c='r', alpha=0.5)
     plt.axis('equal')
+    plt.xlabel('x [$m$]')
+    plt.ylabel('y [$m$]')
     plt.title('Error Bounding Box')
     plt.scatter(0,0, s=50, c='k', label='Sensor')
 
@@ -464,7 +560,7 @@ def plotmultivargauss(wd = widgets.FloatSliderWidget(min=0.005, max=1.0, step=0.
     plt.title('Error Bounding Box (Zoom In)')
 
     plt.tight_layout()
-    
+    #plt.savefig('InverseSensorModel-Langerwisch-BoundingBox.png', dpi=150)
     return plt
 
 # <headingcell level=4>

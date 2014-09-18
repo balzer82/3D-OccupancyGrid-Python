@@ -81,15 +81,18 @@ print "Stats: %.2fs, %.2fGB" % (time.time() - startTime, (grid.nbytes/1024.0**2)
 
 def plot3Dgrid(grid, az, el):
     # plot the surface
-    plt3d = plt.figure(figsize=(12, 6)).gca(projection='3d')
+    plt3d = plt.figure(figsize=(12, 6)).gca(projection='3d', axisbg='w')
 
     # create x,y
     ll, bb = np.meshgrid(range(grid.shape[1]), range(grid.shape[0]))
 
     for z in range(grid.shape[2]):
         if not (np.max(grid[:,:,z])==np.min(grid[:,:,z])): # unberührte Ebenen nicht darstellen
-            plt3d.contourf(ll, bb, grid[:,:,z], offset = z, alpha=0.3)
+            cp = plt3d.contourf(ll, bb, grid[:,:,z], offset = z, alpha=0.3)
 
+    cbar = plt.colorbar(cp, shrink=0.7, aspect=20)
+    cbar.ax.set_ylabel('$P(m|z,x)$')
+    
     plt3d.set_xlabel('B')
     plt3d.set_ylabel('L')
     plt3d.set_zlabel('H')
@@ -112,7 +115,7 @@ def plot3Dgrid(grid, az, el):
 
 # Amanatides, J., & Woo, A. (1987). A fast voxel traversal algorithm for ray tracing. Proceedings of EUROGRAPHICS, i. Retrieved from http://www.cse.yorku.ca/~amana/research/grid.pdf
 # 
-# Here is a Python Implementation: https://gist.github.com/salmonmoose/2760072
+# Here is a Python Implementation of BRESENHAM Algorithm: https://gist.github.com/salmonmoose/2760072
 
 # <codecell>
 
@@ -135,7 +138,7 @@ def bresenham3D(startPoint, endPoint):
       endPoint[0], endPoint[2] = endPoint[2], endPoint[0]
  
    delta = [np.abs(endPoint[0] - startPoint[0]), np.abs(endPoint[1] - startPoint[1]), np.abs(endPoint[2] - startPoint[2])]
- 
+
    errorXY = delta[0] / 2
    errorXZ = delta[0] / 2
  
@@ -174,75 +177,48 @@ def bresenham3D(startPoint, endPoint):
 
    return path
 
-# <headingcell level=3>
+# <codecell>
 
-# Load some ibeo Lux Measurements
+import string
+letters = string.lowercase
 
 # <codecell>
 
-def ibeo2XYZ(theta, dist, layer):
-    '''
-    Berechnet die kartesischen X,Y,Z-Koordinaten aus polaren Koordinaten des IBEO Lux Laserscanners unter der Annahme er ist perfekt horizontal ausgerichtet.
-    
-    Input:
-        - theta: Horizontaler Winkel
-        - dist : polarer Abstand
-        - layer: Ebene
-    '''
-    # Ibeo Lux hat 3.2° bei 4 Ebenen vertikal
-    oeffnungswinkel = 3.2
-    ebenen = 4.0
-    
-    # aus Ebene den Vertikalwinkel berechnen
-    phi = (layer * oeffnungswinkel/(ebenen-1) - oeffnungswinkel/2.0) * np.pi/180.0
-    
-    X = dist * np.cos(theta)
-    Y = dist * np.sin(theta)
-    Z = dist * np.sin(phi)
-    
-    return np.array([X, Y, Z])
+goal = (5.5, 3.5, 0.0)
 
-# <codecell>
+plt.figure(figsize=(5.0,3.6))
+plt.scatter(goal[0], goal[1], s=50, c='r')
+plt.plot((0, goal[0]), (0, goal[1]), c='k', alpha=0.5)
+plt.axis('equal');
+plt.xlim(0, 6)
+plt.ylim(0, 4)
+plt.xlabel('X')
+plt.ylabel('Y')
 
-# or generate some values synthetically:
-#angles = np.arange(-15, 15, 0.25)/180.0*np.pi
-#distance = 5.0*np.ones(len(angles))
-#layer = 3*np.ones(len(angles)) # Ebene {0,1,2,3}
+# Annotations
+#cells = [(0.5, 0.5), (1.5, 0.5), (1.5, 1.5), (2.5, 1.5), (3.5, 1.5), (3.5, 2.5), (4.5, 2.5)]
+cells = bresenham3D((0,0,0), (goal[0], goal[1], 0.0))
 
-# <codecell>
+for i, cell in enumerate(cells):
+    plt.text(cell[0]+0.5, cell[1]+0.5, letters[i], ha='center', va='center')
 
-# some real ibeo lux measurements
-data = pd.read_csv('Messung1.txt', delimiter='|')
+plt.savefig('BRESENHAM-Raycasting.png', dpi=150)
 
-# <codecell>
+# <markdowncell>
 
-data.head(5)
-
-# <headingcell level=4>
-
-# Filter out an arbitrary measurement and bounded angle
-
-# <codecell>
-
-timestamp = 1341907053031
-angles = data['<Winkel>'][(data['# <Zeitstempel>']==timestamp) & (data['<Winkel>']<0.5) & (data['<Winkel>']>-0.5)]
-distance = data['<Radius>'][(data['# <Zeitstempel>']==timestamp) & (data['<Winkel>']<0.5) & (data['<Winkel>']>-0.5)]/100.0
-layer = data['<Ebene>'][(data['# <Zeitstempel>']==timestamp) & (data['<Winkel>']<0.5) & (data['<Winkel>']>-0.5)]
-
-# <codecell>
-
-# Convert from spherical coordinates to cartesian
-[xe, ye, ze] = ibeo2XYZ(angles.values, distance.values, layer.values)
+# Does not hit all traversed grid cells
 
 # <headingcell level=3>
 
-# Sensor Position
+# Sensor Position and Orientation
 
 # <markdowncell>
 
 # Rotation und Translation in homogenen Koordinaten, d.h. es kann alles über Matrizenmultiplikation gemacht werden.
 # 
 # $$\left[\begin{matrix}x \\ y \\ z \\ 1\end{matrix}\right]_\text{Endpoint} = \left[\begin{matrix} R_{3x3} & t_{1x3} \\ 0 & 1\end{matrix}\right] \cdot \left[\begin{matrix}x \\ y \\ z \\ 1\end{matrix}\right]_\text{Messpunkte}$$
+# 
+# wobei $R$ die Rotationsmatrix ist und $t$ der Verschiebungsvektor
 
 # <codecell>
 
@@ -263,6 +239,85 @@ def Rypr(y, p, r):
 
 # <codecell>
 
+def ibeo2XYZ(theta, dist, layer, R, t):
+    '''
+    Berechnet die kartesischen X,Y,Z-Koordinaten aus polaren Koordinaten des IBEO Lux Laserscanners
+   
+    Input:
+        - theta: Horizontaler Winkel
+        - dist : polarer Abstand
+        - layer: Ebene
+        - R    : Euler Rotationsmatrix (Rotation Laserscanner)
+        - t    : Translationsvektor (Position Laserscanner)
+    '''
+    if not R.shape == (3,3):
+        raise ValueError('Rotationsmatrix muss 3x3 sein')
+    if not t.shape == (3,1):
+        raise ValueError('Translationsvektor muss 3x1 sein: [X],[Y],[Z]')
+    
+    
+    # Ibeo Lux hat 3.2° bei 4 Ebenen vertikal
+    oeffnungswinkel = 3.2
+    ebenen = 4.0
+    
+    # aus Ebene den Vertikalwinkel berechnen
+    phi = (layer * oeffnungswinkel/(ebenen-1) - oeffnungswinkel/2.0) * np.pi/180.0
+    
+    X = dist * np.cos(theta)
+    Y = dist * np.sin(theta)
+    Z = dist * np.sin(phi)
+    
+    
+    RSensor = np.eye(4) # Einheitsmatrix erstellen
+
+    # Rotationsteil
+    RSensor[np.ix_([0,1,2],[0,1,2])] = R
+
+    # Translationsteil
+    RSensor[np.ix_([0,1,2],[3])] = t
+    
+    Pointcloud = np.array((X,Y,Z,np.ones(np.size(X))))
+
+    # Homogene Multiplikation von Punkten und Rotation+Translation
+    [xe,ye,ze,w] = np.dot(RSensor, Pointcloud)
+    
+    return np.array([xe, ye, ze])
+
+# <codecell>
+
+# or generate some values synthetically:
+#angles = np.arange(-15, 15, 0.25)/180.0*np.pi
+#distance = 5.0*np.ones(len(angles))
+#layer = 3*np.ones(len(angles)) # Ebene {0,1,2,3}
+
+# <headingcell level=3>
+
+# Load some ibeo Lux Measurements
+
+# <codecell>
+
+# some real ibeo lux measurements
+data = pd.read_csv('Messung1.txt', delimiter='|')
+
+# <codecell>
+
+data.head(5)
+
+# <headingcell level=4>
+
+# Filter out an arbitrary measurement and bounded angle
+
+# <codecell>
+
+timestamp = 1341907053031
+f = (data['# <Zeitstempel>']==timestamp) & (data['<Winkel>']<0.5) & (data['<Winkel>']>-0.5)
+
+angles = data['<Winkel>'][f]
+distance = data['<Radius>'][f]/100.0
+layer = data['<Ebene>'][f]
+
+# <codecell>
+
 yaw   = 0.0 #  Gieren
 pitch = 0.0 #  Nicken
 roll  = 0.0 #  Wanken
@@ -272,28 +327,16 @@ dz= 1.0 #  Verschiebung in Z
 
 # <codecell>
 
-RSensor = np.eye(4) # Einheitsmatrix erstellen
-
-# Rotationsteil
-RSensor[np.ix_([0,1,2],[0,1,2])] = Rypr(yaw, pitch, roll)
-
-# Translationsteil
-tsensor = np.array([[dx], [dy], [dz]]) 
-RSensor[np.ix_([0,1,2],[3])] = tsensor
+# Convert from spherical coordinates to cartesian
+R = Rypr(yaw, pitch, roll)
+t = np.array([[dx], [dy], [dz]]) 
+[xe, ye, ze] = ibeo2XYZ(angles.values, distance.values, layer.values, R, t)
 
 # <codecell>
 
-RSensor
-
-# <codecell>
-
-[xe,ye,ze,w] = np.dot(RSensor, np.array((xe,ye,ze,np.ones(len(xe)))))
-
-# <codecell>
-
-plt3d = plt.figure(figsize=(12, 6)).gca(projection='3d')
+plt3d = plt.figure(figsize=(12, 6)).gca(projection='3d', axisbg='w')
 plt3d.scatter(xe, ye, ze, c='r', label='Laserscanner Pointcloud')
-plt3d.scatter(tsensor[0], tsensor[1], tsensor[2], c='k', s=200, label='ibeo Lux')
+plt3d.scatter(t[0], t[1], t[2], c='k', s=200, label='ibeo Lux')
 plt3d.view_init(45, -115)
 plt3d.axis('equal')
 
@@ -316,7 +359,7 @@ lmax = 3.5
 
 # <codecell>
 
-def insertPointcloud(tSensor, xe,ye,ze):
+def insertPointcloudBRESENHAM(tSensor, xe,ye,ze):
     
     for i,val in enumerate(xe):
         
@@ -325,6 +368,7 @@ def insertPointcloud(tSensor, xe,ye,ze):
         y=int(ye[i])
         z=int(ze[i])
 
+        # Inverse Sensor Model
         grid[x,y,z] += loccupied # increase LogOdds Ratio
 
         if grid[x,y,z]>lmax: #clamping
@@ -338,7 +382,6 @@ def insertPointcloud(tSensor, xe,ye,ze):
 
             if grid[x,y,z]<lmin: #clamping
                 grid[x,y,z]=lmin
-        
 
 # <headingcell level=3>
 
@@ -346,15 +389,14 @@ def insertPointcloud(tSensor, xe,ye,ze):
 
 # <codecell>
 
-RSensor = np.eye(3)  # Rotation Matrix
-tSensor = tsensor/r  # Translation (shift from 0,0,0) in Grid Cell Numbers
+tSensor = t/r  # Translation (shift from 0,0,0) in Grid Cell Numbers
 
 # <codecell>
 
 # integrate the measurement 5 times
 for m in range(5):
     try:
-        insertPointcloud(tSensor, xe/r,ye/r,ze/r)
+        insertPointcloudBRESENHAM(tSensor, xe/r,ye/r,ze/r)
     except:
         print('Fehler beim Einfügen der Messung. Grid zu klein gewählt?!')
 
@@ -399,22 +441,12 @@ print('Min Grid Value (Log Odds): %.2f' % np.min(grid))
 
 # <codecell>
 
-def logOdds2Prob(grid):
-    gridP = grid.copy()
-    for z in range(grid.shape[2]):
-        for y in range(grid.shape[1]):
-            for x in range(grid.shape[0]):
-                gridP[x,y,z] = 1.0-(1.0/(1.0+np.exp(grid[x,y,z])))
-                
-    return gridP
-
-# <codecell>
-
-gridP = logOdds2Prob(grid)
+gridP = np.asarray([1.0-(1.0/(1.0+np.exp(l))) for l in grid])
 
 # <codecell>
 
 plot3Dgrid(gridP, 65, -20)
+plt.savefig('3D-Occupancy-Grid-LogOdds.png')
 
 # <codecell>
 
@@ -443,6 +475,8 @@ plot3Dgrid(blurmap, 65, -20)
 
 # <codecell>
 
+print('Max Grid Value (Probability): %.2f' % np.max(blurmap))
+print('Min Grid Value (Probability): %.2f' % np.min(blurmap))
 
 # <codecell>
 
