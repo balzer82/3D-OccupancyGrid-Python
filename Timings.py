@@ -179,6 +179,69 @@ cells = raycast(angle, dist, layer, R, t, 0.5)
 
 cells
 
+# <headingcell level=1>
+
+# Timing Vergleich zum Erstellen eines Grids
+
+# <codecell>
+
+l = 1000
+b = 1000
+h = 200
+
+# <headingcell level=3>
+
+# Python Nativ
+
+# <codecell>
+
+%timeit grid = [[[0 for x in range(l)] for y in range(b)] for z in range(h)]
+
+# <headingcell level=3>
+
+# Numpy Methods
+
+# <headingcell level=4>
+
+# Int
+
+# <codecell>
+
+%timeit grid = np.zeros((l, b, h), dtype=np.int)
+
+# <codecell>
+
+%timeit grid = np.ones((l, b, h), dtype=np.int)
+
+# <codecell>
+
+%timeit grid = -1 * np.ones((l, b, h), dtype=np.int)
+
+# <codecell>
+
+%%timeit
+grid = np.empty((l,b,h))
+grid.fill(-1.0)
+
+# <headingcell level=4>
+
+# Float32
+
+# <codecell>
+
+%timeit grid = np.zeros((l, b, h), dtype=np.float32)
+
+# <codecell>
+
+%timeit grid = np.ones((l, b, h), dtype=np.float32)
+
+# <codecell>
+
+%timeit grid = -1.0 * np.ones((l, b, h), dtype=np.float32)
+
+# <codecell>
+
+
 # <codecell>
 
 
