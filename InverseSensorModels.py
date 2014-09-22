@@ -24,6 +24,11 @@ from IPython.html import widgets
 # 
 # $P(z\mid x,m)$
 
+# <codecell>
+
+def normalize(P):
+    return P/np.max(np.sum(P))
+
 # <headingcell level=2>
 
 # 2D Mixture Density
@@ -65,6 +70,7 @@ varz = 0.05 # Variance
 zexp = 5.0  # here is the obstacle
 
 Pzx_hit = 1.0/np.sqrt(2*np.pi*varz) * np.exp(-1/2.0*(zs-zexp)**2/varz)
+Pzx_hit = normalize(Pzx_hit)
 
 # <headingcell level=4>
 
@@ -83,6 +89,8 @@ lamb = 0.5
 Pzx_unexp = lamb * np.exp(-lamb * zs)
 Pzx_unexp[zs>zexp] = 0.0
 
+Pzx_unexp = normalize(Pzx_unexp)
+
 # <headingcell level=4>
 
 # Random Measurements
@@ -97,6 +105,8 @@ Pzx_unexp[zs>zexp] = 0.0
 
 Pzx_rand = np.ones(len(zs)) * 0.01
 
+Pzx_rand = normalize(Pzx_rand)
+
 # <headingcell level=4>
 
 # Max Range Model
@@ -110,7 +120,9 @@ Pzx_rand = np.ones(len(zs)) * 0.01
 # <codecell>
 
 Pzx_maxrange = np.zeros(len(zs))
-Pzx_maxrange[-1:] = 1.5
+Pzx_maxrange[-2:] = 0.03
+
+#Pzx_maxrange = normalize(Pzx_maxrange)
 
 # <headingcell level=3>
 
@@ -119,6 +131,7 @@ Pzx_maxrange[-1:] = 1.5
 # <codecell>
 
 Pzx = Pzx_hit + Pzx_unexp + Pzx_rand + Pzx_maxrange
+Pzx = normalize(Pzx)
 
 # <codecell>
 
@@ -155,7 +168,7 @@ for ax in [ax2, ax3, ax4]:
     plt.setp(ax.get_yticklabels(), visible=False)
     # The y-ticks will overlap with "hspace=0", so we'll hide the bottom tick
     #ax.set_yticks(ax.get_yticks()[1:])
-    ax.text(-1.5,np.max(Pzx_hit)/2,'+', fontsize=20)
+    ax.text(-1.5,np.max(Pzx_maxrange)/2,'+', fontsize=20)
 
 plt.tight_layout()
 plt.savefig('InverseSensorModel-MixtureDensity.png', dpi=150)

@@ -14,6 +14,7 @@
 import numpy as np
 import time
 import pandas as pd
+import pickle
 
 # <codecell>
 
@@ -428,6 +429,16 @@ def plotmultivargauss(az = widgets.FloatSliderWidget(min=-90.0, max=90.0, step=1
 
 print('Max Grid Value (Log Odds): %.2f' % np.max(grid))
 print('Min Grid Value (Log Odds): %.2f' % np.min(grid))
+
+# <headingcell level=4>
+
+# Dump the Occupancy Grid to file
+
+# <codecell>
+
+pklfile = open('occupancy-grid.pkl', 'wb')
+pickle.dump(grid, pklfile)
+pklfile.close()
 
 # <headingcell level=2>
 
