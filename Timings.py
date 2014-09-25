@@ -90,7 +90,7 @@ cells = bresenham3D((0,0,0), (goal[0], goal[1], 0.0))
 
 # <codecell>
 
-cells
+#cells
 
 # <headingcell level=2>
 
@@ -177,7 +177,7 @@ cells = raycast(angle, dist, layer, R, t, 0.5)
 
 # <codecell>
 
-cells
+#cells
 
 # <headingcell level=1>
 
@@ -185,9 +185,9 @@ cells
 
 # <codecell>
 
-l = 1000
-b = 1000
-h = 200
+l = 100
+b = 100
+h = 20
 
 # <headingcell level=3>
 
@@ -225,6 +225,24 @@ grid.fill(-1.0)
 
 # <headingcell level=4>
 
+# Int8
+
+# <markdowncell>
+
+# Tipps from [Stackoverflow.com](http://stackoverflow.com/questions/25992795/fastest-way-to-create-an-array-in-python/)
+
+# <codecell>
+
+%%timeit
+grid = np.empty((l,b,h), dtype=np.int8)
+grid[:] = -1
+
+# <codecell>
+
+%timeit grid = np.lib.stride_tricks.as_strided(np.array(-1, dtype=np.int8), (l, b, h), (0, 0, 0))
+
+# <headingcell level=4>
+
 # Float32
 
 # <codecell>
@@ -241,6 +259,9 @@ grid.fill(-1.0)
 
 # <codecell>
 
+%%timeit
+grid = np.empty((l,b,h))
+grid.fill(-1.0)
 
 # <codecell>
 

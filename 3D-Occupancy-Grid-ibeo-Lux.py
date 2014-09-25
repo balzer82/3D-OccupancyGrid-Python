@@ -89,14 +89,14 @@ def plot3Dgrid(grid, az, el):
 
     for z in range(grid.shape[2]):
         if not (np.max(grid[:,:,z])==np.min(grid[:,:,z])): # unberührte Ebenen nicht darstellen
-            cp = plt3d.contourf(ll, bb, grid[:,:,z], offset = z, alpha=0.3)
+            cp = plt3d.contourf(ll, bb, grid[:,:,z], offset = z, alpha=0.3, cmap=cm.Greens)
 
     cbar = plt.colorbar(cp, shrink=0.7, aspect=20)
     cbar.ax.set_ylabel('$P(m|z,x)$')
     
-    plt3d.set_xlabel('B')
-    plt3d.set_ylabel('L')
-    plt3d.set_zlabel('H')
+    plt3d.set_xlabel('X')
+    plt3d.set_ylabel('Y')
+    plt3d.set_zlabel('Z')
     plt3d.set_xlim3d(0, grid.shape[0])
     plt3d.set_ylim3d(0, grid.shape[1])
     plt3d.set_zlim3d(0, grid.shape[2])
@@ -319,12 +319,12 @@ layer = data['<Ebene>'][f]
 
 # <codecell>
 
-yaw   = 0.0 #  Gieren
-pitch = 0.0 #  Nicken
-roll  = 0.0 #  Wanken
-dx= 0.0 #  Verschiebung in X
-dy= 5.0 #  Verschiebung in Y
-dz= 1.0 #  Verschiebung in Z
+yaw   = 0.0 #  Gieren in Grad
+pitch = 0.0 #  Nicken in Grad
+roll  = 0.0 #  Wanken in Grad
+dx= 0.0 #  Verschiebung in X in Meter
+dy= 5.0 #  Verschiebung in Y in Meter
+dz= 1.0 #  Verschiebung in Z in Meter
 
 # <codecell>
 
@@ -340,6 +340,8 @@ plt3d.scatter(xe, ye, ze, c='r', label='Laserscanner Pointcloud')
 plt3d.scatter(t[0], t[1], t[2], c='k', s=200, label='ibeo Lux')
 plt3d.view_init(45, -115)
 plt3d.axis('equal')
+plt3d.set_xlabel('X')
+plt3d.set_ylabel('Y')
 
 # <headingcell level=2>
 
@@ -365,8 +367,8 @@ def insertPointcloudBRESENHAM(tSensor, xe,ye,ze):
     for i,val in enumerate(xe):
         
         # Insert Endpoints
-        x=int(xe[i])
-        y=int(ye[i])
+        y=int(xe[i])
+        x=int(ye[i]) # !!! Koordinatenswitch zwischen X & Y
         z=int(ze[i])
 
         # Inverse Sensor Model
@@ -377,12 +379,12 @@ def insertPointcloudBRESENHAM(tSensor, xe,ye,ze):
 
         
         # Grid cells in perceptual range of laserscanner
-        for (x,y,z) in bresenham3D(tSensor, (xe[i], ye[i], ze[i])):
+        for (y,x,z) in bresenham3D(tSensor, (xe[i], ye[i], ze[i])): # !!! Koordinatenswitch zwischen X & Y
 
             grid[x,y,z] += lfree # decrease LogOdds Ratio
 
             if grid[x,y,z]<lmin: #clamping
-                grid[x,y,z]=lmin
+                grid[x,y,z]=lmin        
 
 # <headingcell level=3>
 
@@ -391,6 +393,7 @@ def insertPointcloudBRESENHAM(tSensor, xe,ye,ze):
 # <codecell>
 
 tSensor = t/r  # Translation (shift from 0,0,0) in Grid Cell Numbers
+tSensor
 
 # <codecell>
 
@@ -410,8 +413,10 @@ for m in range(5):
 @interact
 def plotmultivargauss(z = widgets.FloatSliderWidget(min=0, max=np.max(grid.shape[2])-1, step=1, value=10, description="")):
     plt.figure(figsize=(l/2, b/2))
-    plt.contourf(grid[:,:,z])
+    plt.contourf(grid[:,:,z], cmap=cm.Greens)
     plt.axis('equal')
+    plt.xlabel('X')
+    plt.ylabel('Y')
 
 # <headingcell level=3>
 
@@ -420,8 +425,8 @@ def plotmultivargauss(z = widgets.FloatSliderWidget(min=0, max=np.max(grid.shape
 # <codecell>
 
 @interact
-def plotmultivargauss(az = widgets.FloatSliderWidget(min=-90.0, max=90.0, step=1.0, value=65.0, description=""), \
-                      el = widgets.FloatSliderWidget(min=-90.0, max=90.0, step=1.0, value=-20.0, description="")):
+def plotmultivargauss(az = widgets.FloatSliderWidget(min=-90.0, max=90.0, step=1.0, value=45.0, description=""), \
+                      el = widgets.FloatSliderWidget(min=-180.0, max=180.0, step=1.0, value=-115.0, description="")):
 
     plot3Dgrid(grid, az, el)
 
@@ -436,7 +441,7 @@ print('Min Grid Value (Log Odds): %.2f' % np.min(grid))
 
 # <codecell>
 
-pklfile = open('occupancy-grid.pkl', 'wb')
+pklfile = open('occupancy-grid-LogOdds.pkl', 'wb')
 pickle.dump(grid, pklfile)
 pklfile.close()
 
@@ -448,16 +453,16 @@ pklfile.close()
 
 # The conversion from LogOdds notation to probabilities could be achieved by following formula:
 # 
-# $$P(l) = 1-\cfrac{1}{1+e^l}$$ with $l$=LogOdds Value
+# $$P(l) = 1-\cfrac{1}{1+e^{lo}}$$ with $lo$=LogOdds Value
 
 # <codecell>
 
-gridP = np.asarray([1.0-(1.0/(1.0+np.exp(l))) for l in grid])
+gridP = np.asarray([1.0-(1.0/(1.0+np.exp(lo))) for lo in grid])
 
 # <codecell>
 
-plot3Dgrid(gridP, 65, -20)
-plt.savefig('3D-Occupancy-Grid-LogOdds.png')
+plot3Dgrid(gridP, 45, -115)
+plt.savefig('3D-Occupancy-Grid.png')
 
 # <codecell>
 
@@ -478,16 +483,26 @@ from scipy.ndimage import gaussian_filter
 
 # <codecell>
 
-blurmap = gaussian_filter(gridP, 1)
+blurmap = gaussian_filter(gridP, 0.4)
 
 # <codecell>
 
-plot3Dgrid(blurmap, 65, -20)
+plot3Dgrid(blurmap, 45, -115)
 
 # <codecell>
 
 print('Max Grid Value (Probability): %.2f' % np.max(blurmap))
 print('Min Grid Value (Probability): %.2f' % np.min(blurmap))
+
+# <headingcell level=4>
+
+# Dump the convolved map
+
+# <codecell>
+
+pklfile = open('occupancy-grid-Blur.pkl', 'wb')
+pickle.dump(blurmap, pklfile)
+pklfile.close()
 
 # <codecell>
 
