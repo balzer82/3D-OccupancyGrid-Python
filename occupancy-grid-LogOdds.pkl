@@ -11,9 +11,9 @@ p3
 tp4
 Rp5
 (I1
-(I100
-I100
-I20
+(L100L
+L100L
+L20L
 tp6
 cnumpy
 dtype

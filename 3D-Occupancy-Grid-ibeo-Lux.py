@@ -1,35 +1,31 @@
-# -*- coding: utf-8 -*-
-# <nbformat>3.0</nbformat>
 
-# <headingcell level=1>
+# coding: utf-8
 
-# 3D Occupancy Grid with ibeo Lux Laserscanner
-
-# <markdowncell>
+# # 3D Occupancy Grid with ibeo Lux Laserscanner
 
 # ![ibeo Lux](http://www.mechlab.de/wp-content/uploads/2012/02/ibeoLUX.jpg)
 
-# <codecell>
+# In[1]:
 
 import numpy as np
 import time
 import pandas as pd
 import pickle
 
-# <codecell>
+
+# In[2]:
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from IPython.html.widgets import interact
 from IPython.html import widgets
-%matplotlib inline
+get_ipython().magic(u'matplotlib inline')
 
-# <headingcell level=3>
 
-# Create Empty Grid
+# ### Create Empty Grid
 
-# <codecell>
+# In[3]:
 
 l = 10.0 # Länge m
 b = 10.0  # Breite m
@@ -37,19 +33,17 @@ h = 2.0  # Höhe m
 
 r = 0.1 # Resolution m/gridcell
 
-# <codecell>
+
+# In[4]:
 
 print('%.1fmio Grid Cells' % ((l*b*h)/r**3/1e6))
 
-# <headingcell level=2>
 
-# Generate a LogOdds Grid
-
-# <markdowncell>
+# ## Generate a LogOdds Grid
 
 # Why LogOdds? Numerically stable around $p=0$ and $p=1$ and reduces the mathematical efford to update the Grid (Bayes Rule) to just an addition!
 
-# <codecell>
+# In[5]:
 
 p = np.arange(0.01, 1.0, 0.01)
 lo = np.log(p/(1-p))
@@ -58,14 +52,13 @@ plt.xticks(np.arange(0, 1.1, 0.1))
 plt.xlabel('Probability $p$')
 plt.ylabel(r'Log Odds, $\log(\frac{p}{1-p})$')
 
-# <markdowncell>
 
 # So an initial uncertainty ($p=0.5$) is a zero in LogOdds. That's fine, because it is a very fast initialization of the grid!
 # In order to store log(odds), we need negative values and decimal values. And `float32` ist fastest: http://stackoverflow.com/questions/15340781/python-numpy-data-types-performance
 # 
 # So let's use it!
 
-# <codecell>
+# In[6]:
 
 print "%ix%ix%i Grid" % (l/r, b/r, h/r)
 startTime = time.time()
@@ -74,11 +67,10 @@ grid = np.zeros((l/r, b/r, h/r), dtype=np.float32) # Log Odds Grid must be initi
 
 print "Stats: %.2fs, %.2fGB" % (time.time() - startTime, (grid.nbytes/1024.0**2))
 
-# <headingcell level=3>
 
-# 3D View
+# ### 3D View
 
-# <codecell>
+# In[7]:
 
 def plot3Dgrid(grid, az, el):
     # plot the surface
@@ -104,21 +96,19 @@ def plot3Dgrid(grid, az, el):
     plt3d.view_init(az, el)
     return plt3d
 
-# <codecell>
+
+# In[8]:
 
 #plot3Dgrid(grid, 25, -30)
 
-# <headingcell level=2>
 
-# Integrate a measurement with BRESENHAM Algorithm
-
-# <markdowncell>
+# ## Integrate a measurement with BRESENHAM Algorithm
 
 # Amanatides, J., & Woo, A. (1987). A fast voxel traversal algorithm for ray tracing. Proceedings of EUROGRAPHICS, i. Retrieved from http://www.cse.yorku.ca/~amana/research/grid.pdf
 # 
 # Here is a Python Implementation of BRESENHAM Algorithm: https://gist.github.com/salmonmoose/2760072
 
-# <codecell>
+# In[9]:
 
 def bresenham3D(startPoint, endPoint):
    # by Anton Fletcher
@@ -178,12 +168,14 @@ def bresenham3D(startPoint, endPoint):
 
    return path
 
-# <codecell>
+
+# In[10]:
 
 import string
 letters = string.lowercase
 
-# <codecell>
+
+# In[11]:
 
 goal = (5.5, 3.5, 0.0)
 
@@ -205,15 +197,10 @@ for i, cell in enumerate(cells):
 
 plt.savefig('BRESENHAM-Raycasting.png', dpi=150)
 
-# <markdowncell>
 
 # Does not hit all traversed grid cells
 
-# <headingcell level=3>
-
-# Sensor Position and Orientation
-
-# <markdowncell>
+# ### Sensor Position and Orientation
 
 # Rotation und Translation in homogenen Koordinaten, d.h. es kann alles über Matrizenmultiplikation gemacht werden.
 # 
@@ -221,7 +208,7 @@ plt.savefig('BRESENHAM-Raycasting.png', dpi=150)
 # 
 # wobei $R$ die Rotationsmatrix ist und $t$ der Verschiebungsvektor
 
-# <codecell>
+# In[12]:
 
 def Rypr(y, p, r):
     '''
@@ -238,7 +225,8 @@ def Rypr(y, p, r):
     
     return Ry*Rp*Rr
 
-# <codecell>
+
+# In[13]:
 
 def ibeo2XYZ(theta, dist, layer, R, t):
     '''
@@ -284,31 +272,31 @@ def ibeo2XYZ(theta, dist, layer, R, t):
     
     return np.array([xe, ye, ze])
 
-# <codecell>
+
+# In[14]:
 
 # or generate some values synthetically:
 #angles = np.arange(-15, 15, 0.25)/180.0*np.pi
 #distance = 5.0*np.ones(len(angles))
 #layer = 3*np.ones(len(angles)) # Ebene {0,1,2,3}
 
-# <headingcell level=3>
 
-# Load some ibeo Lux Measurements
+# ### Load some ibeo Lux Measurements
 
-# <codecell>
+# In[15]:
 
 # some real ibeo lux measurements
 data = pd.read_csv('Messung1.txt', delimiter='|')
 
-# <codecell>
+
+# In[16]:
 
 data.head(5)
 
-# <headingcell level=4>
 
-# Filter out an arbitrary measurement and bounded angle
+# #### Filter out an arbitrary measurement and bounded angle
 
-# <codecell>
+# In[17]:
 
 timestamp = 1341907053031
 f = (data['# <Zeitstempel>']==timestamp) & (data['<Winkel>']<0.5) & (data['<Winkel>']>-0.5)
@@ -317,7 +305,8 @@ angles = data['<Winkel>'][f]
 distance = data['<Radius>'][f]/100.0
 layer = data['<Ebene>'][f]
 
-# <codecell>
+
+# In[18]:
 
 yaw   = 0.0 #  Gieren in Grad
 pitch = 0.0 #  Nicken in Grad
@@ -326,14 +315,16 @@ dx= 0.0 #  Verschiebung in X in Meter
 dy= 5.0 #  Verschiebung in Y in Meter
 dz= 1.0 #  Verschiebung in Z in Meter
 
-# <codecell>
+
+# In[19]:
 
 # Convert from spherical coordinates to cartesian
 R = Rypr(yaw, pitch, roll)
 t = np.array([[dx], [dy], [dz]]) 
 [xe, ye, ze] = ibeo2XYZ(angles.values, distance.values, layer.values, R, t)
 
-# <codecell>
+
+# In[20]:
 
 plt3d = plt.figure(figsize=(12, 6)).gca(projection='3d', axisbg='w')
 plt3d.scatter(xe, ye, ze, c='r', label='Laserscanner Pointcloud')
@@ -343,15 +334,12 @@ plt3d.axis('equal')
 plt3d.set_xlabel('X')
 plt3d.set_ylabel('Y')
 
-# <headingcell level=2>
 
-# Function which integrates the Measurement via Inverse Sensor Model
-
-# <markdowncell>
+# ## Function which integrates the Measurement via Inverse Sensor Model
 
 # Values for hit and miss probabilities are taken from Hornung, A., Wurm, K. M., Bennewitz, M., Stachniss, C., & Burgard, W. (2013). OctoMap: an efficient probabilistic 3D mapping framework based on octrees. Autonomous Robots, 34(3), 189–206. doi:10.1007/s10514-012-9321-0
 
-# <codecell>
+# In[21]:
 
 # in LogOdds Notation!
 loccupied = 0.85
@@ -360,7 +348,8 @@ lfree = -0.4
 lmin = -2.0
 lmax = 3.5
 
-# <codecell>
+
+# In[22]:
 
 def insertPointcloudBRESENHAM(tSensor, xe,ye,ze):
     
@@ -386,16 +375,16 @@ def insertPointcloudBRESENHAM(tSensor, xe,ye,ze):
             if grid[x,y,z]<lmin: #clamping
                 grid[x,y,z]=lmin        
 
-# <headingcell level=3>
 
-# Sensor Origin
+# ### Sensor Origin
 
-# <codecell>
+# In[23]:
 
 tSensor = t/r  # Translation (shift from 0,0,0) in Grid Cell Numbers
 tSensor
 
-# <codecell>
+
+# In[24]:
 
 # integrate the measurement 5 times
 for m in range(5):
@@ -404,11 +393,10 @@ for m in range(5):
     except:
         print('Fehler beim Einfügen der Messung. Grid zu klein gewählt?!')
 
-# <headingcell level=3>
 
-# 2D Plot of Grid Layer Z
+# ### 2D Plot of Grid Layer Z
 
-# <codecell>
+# In[25]:
 
 @interact
 def plotmultivargauss(z = widgets.FloatSliderWidget(min=0, max=np.max(grid.shape[2])-1, step=1, value=10, description="")):
@@ -418,92 +406,93 @@ def plotmultivargauss(z = widgets.FloatSliderWidget(min=0, max=np.max(grid.shape
     plt.xlabel('X')
     plt.ylabel('Y')
 
-# <headingcell level=3>
 
-# 3D Plot
+# ### 3D Plot
 
-# <codecell>
+# In[26]:
 
 @interact
-def plotmultivargauss(az = widgets.FloatSliderWidget(min=-90.0, max=90.0, step=1.0, value=45.0, description=""), \
-                      el = widgets.FloatSliderWidget(min=-180.0, max=180.0, step=1.0, value=-115.0, description="")):
+def plotmultivargauss(az = widgets.FloatSliderWidget(min=-90.0, max=90.0, step=1.0, value=45.0, description=""),                       el = widgets.FloatSliderWidget(min=-180.0, max=180.0, step=1.0, value=-115.0, description="")):
 
     plot3Dgrid(grid, az, el)
 
-# <codecell>
+
+# In[27]:
 
 print('Max Grid Value (Log Odds): %.2f' % np.max(grid))
 print('Min Grid Value (Log Odds): %.2f' % np.min(grid))
 
-# <headingcell level=4>
 
-# Dump the Occupancy Grid to file
+# #### Dump the Occupancy Grid to file
 
-# <codecell>
+# In[28]:
 
 pklfile = open('occupancy-grid-LogOdds.pkl', 'wb')
 pickle.dump(grid, pklfile)
 pklfile.close()
 
-# <headingcell level=2>
 
-# From LogOdds Occupancy Grid to Probability Grid
-
-# <markdowncell>
+# ## From LogOdds Occupancy Grid to Probability Grid
 
 # The conversion from LogOdds notation to probabilities could be achieved by following formula:
 # 
 # $$P(l) = 1-\cfrac{1}{1+e^{lo}}$$ with $lo$=LogOdds Value
 
-# <codecell>
+# In[29]:
 
 gridP = np.asarray([1.0-(1.0/(1.0+np.exp(lo))) for lo in grid])
 
-# <codecell>
+
+# In[30]:
 
 plot3Dgrid(gridP, 45, -115)
 plt.savefig('3D-Occupancy-Grid.png')
 
-# <codecell>
+
+# In[31]:
 
 print('Max Grid Value (Probability): %.2f' % np.max(gridP))
 print('Min Grid Value (Probability): %.2f' % np.min(gridP))
 
-# <codecell>
+
+# In[32]:
 
 print('Done.')
 
-# <headingcell level=2>
 
-# Convolve the Map for Path Planning
+# ## Convolve the Map for Path Planning
 
-# <codecell>
+# In[33]:
 
 from scipy.ndimage import gaussian_filter
 
-# <codecell>
+
+# In[34]:
 
 blurmap = gaussian_filter(gridP, 0.4)
 
-# <codecell>
+
+# In[35]:
 
 plot3Dgrid(blurmap, 45, -115)
 
-# <codecell>
+
+# In[36]:
 
 print('Max Grid Value (Probability): %.2f' % np.max(blurmap))
 print('Min Grid Value (Probability): %.2f' % np.min(blurmap))
 
-# <headingcell level=4>
 
-# Dump the convolved map
+# #### Dump the convolved map
 
-# <codecell>
+# In[37]:
 
 pklfile = open('occupancy-grid-Blur.pkl', 'wb')
 pickle.dump(blurmap, pklfile)
 pklfile.close()
 
-# <codecell>
+
+# In[37]:
+
 
 
