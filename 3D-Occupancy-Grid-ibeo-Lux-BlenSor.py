@@ -6,10 +6,10 @@
 # [BlenSor](http://blensor.org) is a Laserscanner simulation Toolbox, based on Blender, Thanks Michael!
 # 
 # ```
-# Michael Gschwandtner, Roland Kwitt, Andreas Uhl and Wolfgang Pree,  BlenSor: Blender Sensor Simulation Toolbox , In G. Bebis, R. Boyle, B. Parvin, D. Koracin, R. Chung and R. Hammoud, editors, Advances in Visual Com- puting: 7th International Symposium, (ISVC 2011), Volume 6939/2011, pp. 199-208, Springer Verlag, 2011
+# Michael Gschwandtner, Roland Kwitt, Andreas Uhl and Wolfgang Pree,  BlenSor: Blender Sensor Simulation Toolbox , In G. Bebis, R. Boyle, B. Parvin, D. Koracin, R. Chung and R. Hammoud, editors, Advances in Visual Computing: 7th International Symposium, (ISVC 2011), Volume 6939/2011, pp. 199-208, Springer Verlag, 2011
 # ```
 
-# In[202]:
+# In[140]:
 
 import numpy as np
 import time
@@ -17,7 +17,7 @@ import pandas as pd
 import pickle
 
 
-# In[203]:
+# In[141]:
 
 get_ipython().magic(u'matplotlib inline')
 import matplotlib.pyplot as plt
@@ -28,23 +28,24 @@ import seaborn as sns
 sns.set_style('whitegrid')
 
 
-# In[ ]:
+# In[142]:
 
-
+from IPython.html import widgets
+from IPython.html.widgets import interact
 
 
 # ### Create Empty Grid
 
-# In[204]:
+# In[143]:
 
-l = 50.0 # Länge m
-b = 35.0  # Breite m
+l = 30.0 # Länge m
+b = 10.0  # Breite m
 h = 3.0  # Höhe m
 
 grid_res = 0.1 # Resolution m/gridcell
 
 
-# In[205]:
+# In[144]:
 
 print('%.1fmio Grid Cells' % ((l*b*h)/grid_res**3/1e6))
 
@@ -58,19 +59,19 @@ print('%.1fmio Grid Cells' % ((l*b*h)/grid_res**3/1e6))
 # 
 # So let's use it!
 
-# In[206]:
+# In[145]:
 
-print "%ix%ix%i Grid" % (l/grid_res, b/grid_res, h/grid_res)
+print "%ix%ix%i Grid" % (b/grid_res, l/grid_res, h/grid_res)
 startTime = time.time()
 
-grid = np.zeros((l/grid_res, b/grid_res, h/grid_res), dtype=np.float32) # Log Odds Grid must be initialized with zeros!
+grid = np.zeros((b/grid_res, l/grid_res, h/grid_res), dtype=np.float32) # Log Odds Grid must be initialized with zeros!
 
 print "Stats: %.2fs, %.2fGB" % (time.time() - startTime, (grid.nbytes/1024.0**2))
 
 
 # ### Function for 3D View of the Occupancy Grid
 
-# In[207]:
+# In[146]:
 
 def plot3Dgrid(grid, az, el):
     # plot the surface
@@ -89,8 +90,8 @@ def plot3Dgrid(grid, az, el):
     plt3d.set_xlabel('X')
     plt3d.set_ylabel('Y')
     plt3d.set_zlabel('Z')
-    plt3d.set_xlim3d(0, grid.shape[0])
-    plt3d.set_ylim3d(0, grid.shape[1])
+    #plt3d.set_xlim3d(0, grid.shape[0])
+    #plt3d.set_ylim3d(0, grid.shape[1])
     plt3d.set_zlim3d(0, grid.shape[2])
     #plt3d.axis('equal')
     plt3d.view_init(az, el)
@@ -101,7 +102,7 @@ def plot3Dgrid(grid, az, el):
 # 
 # see "[[Tutorial] Rotationsmatrix und Quaternion einfach erklärt in DIN70000 ZYX Konvention](http://www.cbcity.de/tutorial-rotationsmatrix-und-quaternion-einfach-erklaert-in-din70000-zyx-konvention)" for more details
 
-# In[208]:
+# In[147]:
 
 def Rypr(y, p, r, in_deg=False):
     '''
@@ -129,7 +130,7 @@ def Rypr(y, p, r, in_deg=False):
 # 
 # Here is a Python Implementation of BRESENHAM Algorithm: https://gist.github.com/salmonmoose/2760072
 
-# In[209]:
+# In[148]:
 
 def bresenham3D(startPoint, endPoint):
     # by Anton Fletcher
@@ -197,7 +198,7 @@ def bresenham3D(startPoint, endPoint):
 #     Hornung, A., Wurm, K. M., Bennewitz, M., Stachniss, C., & Burgard, W. (2013). OctoMap: an efficient probabilistic 3D mapping framework based on octrees. Autonomous Robots, 34(3), 189–206. doi:10.1007/s10514-012-9321-0
 # 
 
-# In[210]:
+# In[149]:
 
 # in LogOdds Notation!
 loccupied = 0.85
@@ -207,7 +208,7 @@ lmin = -2.0
 lmax = 3.5
 
 
-# In[211]:
+# In[150]:
 
 def insertPointcloudBRESENHAM(grid, grid_res, tSensor, XYZendpoints):
     '''
@@ -253,9 +254,9 @@ def insertPointcloudBRESENHAM(grid, grid_res, tSensor, XYZendpoints):
 # 
 # The grid is 0-based, the scans are in global coordinates, so we shift the scans to some coordinates, that it will fit into the initialized Occupancy grid.
 
-# In[212]:
+# In[151]:
 
-grid_shift = np.array([40.0, 8.0, 0.0])
+grid_shift = np.array([35.0, 8.0, 0.0])
 
 
 # ### Load some Simulated Laserscanner Data
@@ -265,7 +266,7 @@ grid_shift = np.array([40.0, 8.0, 0.0])
 # 1. Some `.pcd` were dumped
 # 2. A `motion.pcd` was generated, which holds the position and orientation of the Laserscanner
 
-# In[213]:
+# In[152]:
 
 motiondata = pd.read_csv('./scans/motion.pcd', delimiter=' ',
                          usecols=[1,5,7,9,11,13,15],
@@ -276,7 +277,7 @@ motiondata.head()
 
 # Every `timestamp` with arbitrary `x, y, z` location and `rot_x, rot_y, rot_z` Rotation of the sensor has a scan:
 
-# In[214]:
+# In[153]:
 
 len(motiondata)
 
@@ -287,7 +288,7 @@ len(motiondata)
 # 
 # wobei $R$ die Rotationsmatrix ist und $t$ der Verschiebungsvektor
 
-# In[215]:
+# In[154]:
 
 m_start = 320 # Startnummer der Dateien (entspricht Frame in Blender)
 pointcloud = pd.DataFrame()
@@ -317,8 +318,10 @@ for m in range(len(motiondata)):
     pcl_local_homogen = np.vstack([data[['X','Y','Z']].T, np.ones([1, len(data)])])
     pcl_global = np.dot(T, pcl_local_homogen)[:3, :].T
     
-    
+    # Insert Laserscanner Measurements into the Occupancy Grid
     grid = insertPointcloudBRESENHAM(grid, grid_res, t+grid_shift, pcl_global)
+    
+    # Save Pointcloud
     pointcloud = pointcloud.append(pd.DataFrame(pcl_global, columns=['x','y','z']), ignore_index=True)
 
 
@@ -327,14 +330,14 @@ for m in range(len(motiondata)):
 
 
 
-# In[216]:
+# In[155]:
 
 pointcloud.plot(x='x', y='y', c='z', kind='scatter', cmap='summer', figsize=(14,5))
 plt.axis('equal')
 plt.title('Scans (view from top)')
 
 
-# In[217]:
+# In[156]:
 
 print('Maximale Pointcloud Abmessungen:')
 print('x: %.2f %.2f' % (pointcloud.x.min(), pointcloud.x.max()))
@@ -342,7 +345,7 @@ print('y: %.2f %.2f' % (pointcloud.y.min(), pointcloud.y.max()))
 print('z: %.2f %.2f' % (pointcloud.z.min(), pointcloud.z.max()))
 
 
-# In[218]:
+# In[157]:
 
 plot3Dgrid(grid, 45, -115)
 
@@ -354,20 +357,22 @@ plot3Dgrid(grid, 45, -115)
 
 # ### 2D Plot of Grid Layer Z
 
-# In[ ]:
+# In[158]:
 
 @interact
-def plotmultivargauss(z = widgets.FloatSliderWidget(min=0, max=np.max(grid.shape[2])-1, step=1, value=10, description="")):
+def plotGridLayer(z = widgets.FloatSliderWidget(min=0, max=np.max(grid.shape[2])-1, step=1, value=10, description="")):
     plt.figure(figsize=(l/2, b/2))
     plt.contourf(grid[:,:,z], cmap=cm.Greens)
+    plt.colorbar(label='log-odd(p)')
     plt.axis('equal')
+    plt.title('z-Layer: %i' % z)
     plt.xlabel('X')
     plt.ylabel('Y')
 
 
 # ### 3D Plot
 
-# In[ ]:
+# In[159]:
 
 @interact
 def plotmultivargauss(az = widgets.FloatSliderWidget(min=-90.0, max=90.0, step=1.0, value=45.0, description=""),                       el = widgets.FloatSliderWidget(min=-180.0, max=180.0, step=1.0, value=-115.0, description="")):
@@ -375,7 +380,7 @@ def plotmultivargauss(az = widgets.FloatSliderWidget(min=-90.0, max=90.0, step=1
     plot3Dgrid(grid, az, el)
 
 
-# In[97]:
+# In[160]:
 
 print('Max Grid Value (Log Odds): %.2f' % np.max(grid))
 print('Min Grid Value (Log Odds): %.2f' % np.min(grid))
@@ -383,7 +388,7 @@ print('Min Grid Value (Log Odds): %.2f' % np.min(grid))
 
 # #### Dump the Occupancy Grid to file
 
-# In[ ]:
+# In[161]:
 
 pklfile = open('occupancy-grid-LogOdds.pkl', 'wb')
 pickle.dump(grid, pklfile)
@@ -396,46 +401,53 @@ pklfile.close()
 # 
 # $$P(l) = 1-\cfrac{1}{1+e^{lo}}$$ with $lo$=LogOdds Value
 
-# In[ ]:
+# In[162]:
 
 gridP = np.asarray([1.0-(1.0/(1.0+np.exp(lo))) for lo in grid])
 
 
-# In[ ]:
+# In[163]:
+
+# Dumpt the Occupancy Grid to File
+name = 'gridP' + str(gridP.shape).replace('L','') + '-Blender.txt'
+np.savetxt(name,gridP.flatten(), fmt='%.3f')
+
+
+# In[164]:
 
 plot3Dgrid(gridP, 45, -115)
 plt.savefig('3D-Occupancy-Grid.png')
 
 
-# In[ ]:
+# In[165]:
 
 print('Max Grid Value (Probability): %.2f' % np.max(gridP))
 print('Min Grid Value (Probability): %.2f' % np.min(gridP))
 
 
-# In[ ]:
+# In[166]:
 
 print('Done.')
 
 
 # ## Convolve the Map for Path Planning
 
-# In[ ]:
+# In[167]:
 
 from scipy.ndimage import gaussian_filter
 
 
-# In[ ]:
+# In[168]:
 
 blurmap = gaussian_filter(gridP, 0.4)
 
 
-# In[ ]:
+# In[169]:
 
 plot3Dgrid(blurmap, 45, -115)
 
 
-# In[ ]:
+# In[170]:
 
 print('Max Grid Value (Probability): %.2f' % np.max(blurmap))
 print('Min Grid Value (Probability): %.2f' % np.min(blurmap))
@@ -443,7 +455,7 @@ print('Min Grid Value (Probability): %.2f' % np.min(blurmap))
 
 # #### Dump the convolved map
 
-# In[ ]:
+# In[171]:
 
 pklfile = open('occupancy-grid-Blur.pkl', 'wb')
 pickle.dump(blurmap, pklfile)
